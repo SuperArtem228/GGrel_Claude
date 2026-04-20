@@ -96,59 +96,62 @@ async function main() {
   ] as const;
 
   for (const tpl of challengeTemplates) {
+    // Use packKey+title hash as stable ASCII id
+    const key = tpl.packKey + "-" + tpl.period.toLowerCase() + "-" + challengeTemplates.indexOf(tpl);
     await prisma.challengeTemplate.upsert({
-      where: { id: `seed-${tpl.title}` },
+      where: { id: key },
       update: {},
-      create: { id: `seed-${tpl.title}`, ...tpl } as any,
+      create: { id: key, ...tpl } as any,
     });
   }
 
   // ── Rewards (system) ───────────────────────────────
+  // IDs must be URL-safe ASCII — no Cyrillic, no spaces
   const rewards = [
-    { title: "Массаж 15 минут", description: "Партнёр делает тебе 15-минутный массаж.", category: "ACTION", priceLc: 80, emoji: "💆" },
-    { title: "Завтрак в постель", description: "Полноценный завтрак в постель.", category: "ACTION", priceLc: 120, emoji: "🍳" },
-    { title: "Выбираешь фильм", description: "Следующий фильм выбираешь ты.", category: "INSTANT", priceLc: 40, emoji: "🎬" },
-    { title: "Домашнее свидание", description: "Партнёр готовит и организует вечер.", category: "ACTION", priceLc: 160, emoji: "🕯️" },
-    { title: "Ресторан", description: "Партнёр ведёт тебя в ресторан.", category: "ACTION", priceLc: 300, emoji: "🍽️" },
-    { title: "Уборка на тебе", description: "Партнёр берёт уборку на себя на неделю.", category: "ACTION", priceLc: 200, emoji: "🧹" },
-    { title: "Право на лень", description: "Один день без домашних дел.", category: "INSTANT", priceLc: 100, emoji: "🛋️" },
-    { title: "Выбираешь место", description: "Право выбрать, куда идти.", category: "INSTANT", priceLc: 60, emoji: "🧭" },
-    { title: "Плейлист дня", description: "Сегодня музыку выбираешь ты.", category: "INSTANT", priceLc: 40, emoji: "🎧" },
-    { title: "Комплимент-бомба", description: "Партнёр говорит 5 комплиментов подряд.", category: "ACTION", priceLc: 60, emoji: "💬" },
-    { title: "Прогулка мечты", description: "Партнёр организует прогулку по твоему сценарию.", category: "ACTION", priceLc: 140, emoji: "🌳" },
-    { title: "Вечер кино", description: "Партнёр готовит вечер кино дома.", category: "ACTION", priceLc: 100, emoji: "🍿" },
-    { title: "Любимая еда", description: "Партнёр готовит твоё любимое блюдо.", category: "ACTION", priceLc: 120, emoji: "🥘" },
-    { title: "Утро без будильника", description: "Утро без забот и ранних дел.", category: "INSTANT", priceLc: 80, emoji: "🌅" },
-    { title: "Сюрприз-подарок", description: "Партнёр готовит маленький сюрприз.", category: "ACTION", priceLc: 200, emoji: "🎁" },
-    { title: "Чайная церемония", description: "Расслабляющая чайная церемония вдвоём.", category: "ACTION", priceLc: 100, emoji: "🍵" },
-    { title: "Фото-сессия", description: "Домашняя фото-сессия друг друга.", category: "ACTION", priceLc: 180, emoji: "📸" },
-    { title: "Книга вслух", description: "Партнёр читает тебе вслух 20 минут.", category: "ACTION", priceLc: 80, emoji: "📖" },
-    { title: "День твоих правил", description: "Один день — твои правила.", category: "INSTANT", priceLc: 240, emoji: "👑" },
-    { title: "Танец медленный", description: "Медленный танец на кухне под любимый трек.", category: "ACTION", priceLc: 60, emoji: "💃" },
+    { id: "rw-massage",      title: "Массаж 15 минут",       description: "Партнёр делает тебе 15-минутный массаж.",          category: "ACTION",  priceLc: 80,  emoji: "💆" },
+    { id: "rw-breakfast",    title: "Завтрак в постель",      description: "Полноценный завтрак в постель.",                   category: "ACTION",  priceLc: 120, emoji: "🍳" },
+    { id: "rw-film",         title: "Выбираешь фильм",        description: "Следующий фильм выбираешь ты.",                    category: "INSTANT", priceLc: 40,  emoji: "🎬" },
+    { id: "rw-home-date",    title: "Домашнее свидание",      description: "Партнёр готовит и организует вечер.",              category: "ACTION",  priceLc: 160, emoji: "🕯️" },
+    { id: "rw-restaurant",   title: "Ресторан",               description: "Партнёр ведёт тебя в ресторан.",                   category: "ACTION",  priceLc: 300, emoji: "🍽️" },
+    { id: "rw-cleaning",     title: "Уборка на тебе",         description: "Партнёр берёт уборку на себя на неделю.",          category: "ACTION",  priceLc: 200, emoji: "🧹" },
+    { id: "rw-lazy-day",     title: "Право на лень",          description: "Один день без домашних дел.",                      category: "INSTANT", priceLc: 100, emoji: "🛋️" },
+    { id: "rw-choose-place", title: "Выбираешь место",        description: "Право выбрать, куда идти.",                        category: "INSTANT", priceLc: 60,  emoji: "🧭" },
+    { id: "rw-playlist",     title: "Плейлист дня",           description: "Сегодня музыку выбираешь ты.",                     category: "INSTANT", priceLc: 40,  emoji: "🎧" },
+    { id: "rw-compliment",   title: "Комплимент-бомба",       description: "Партнёр говорит 5 комплиментов подряд.",           category: "ACTION",  priceLc: 60,  emoji: "💬" },
+    { id: "rw-walk",         title: "Прогулка мечты",         description: "Партнёр организует прогулку по твоему сценарию.", category: "ACTION",  priceLc: 140, emoji: "🌳" },
+    { id: "rw-movie-night",  title: "Вечер кино",             description: "Партнёр готовит вечер кино дома.",                 category: "ACTION",  priceLc: 100, emoji: "🍿" },
+    { id: "rw-fav-food",     title: "Любимая еда",            description: "Партнёр готовит твоё любимое блюдо.",              category: "ACTION",  priceLc: 120, emoji: "🥘" },
+    { id: "rw-sleep-in",     title: "Утро без будильника",    description: "Утро без забот и ранних дел.",                     category: "INSTANT", priceLc: 80,  emoji: "🌅" },
+    { id: "rw-surprise",     title: "Сюрприз-подарок",        description: "Партнёр готовит маленький сюрприз.",               category: "ACTION",  priceLc: 200, emoji: "🎁" },
+    { id: "rw-tea",          title: "Чайная церемония",       description: "Расслабляющая чайная церемония вдвоём.",           category: "ACTION",  priceLc: 100, emoji: "🍵" },
+    { id: "rw-photoshoot",   title: "Фото-сессия",            description: "Домашняя фото-сессия друг друга.",                 category: "ACTION",  priceLc: 180, emoji: "📸" },
+    { id: "rw-book",         title: "Книга вслух",            description: "Партнёр читает тебе вслух 20 минут.",              category: "ACTION",  priceLc: 80,  emoji: "📖" },
+    { id: "rw-your-rules",   title: "День твоих правил",      description: "Один день — твои правила.",                        category: "INSTANT", priceLc: 240, emoji: "👑" },
+    { id: "rw-slow-dance",   title: "Танец медленный",        description: "Медленный танец на кухне под любимый трек.",       category: "ACTION",  priceLc: 60,  emoji: "💃" },
   ] as const;
 
   for (const r of rewards) {
     await prisma.rewardTemplate.upsert({
-      where: { id: `reward-${r.title}` },
+      where: { id: r.id },
       update: {},
-      create: { id: `reward-${r.title}`, isSystem: true, ...r } as any,
+      create: { isSystem: true, ...r } as any,
     });
   }
 
-  // Spicy rewards
+  // Spicy rewards — also ASCII IDs
   const spicyRewards = [
-    { title: "Приватный массаж", description: "Массаж без слов, только ощущения.", category: "PRIVATE", priceLc: 140, emoji: "🌙" },
-    { title: "Ночь по твоим правилам", description: "Вечер вдвоём по твоему сценарию.", category: "PRIVATE", priceLc: 280, emoji: "🔮" },
-    { title: "Приватный танец", description: "Один медленный танец только для тебя.", category: "PRIVATE", priceLc: 120, emoji: "🎭" },
-    { title: "Секретное свидание", description: "Неожиданная встреча в неожиданном месте.", category: "PRIVATE", priceLc: 220, emoji: "🗝️" },
-    { title: "Долгое утро", description: "Утро без планов, только вдвоём.", category: "PRIVATE", priceLc: 160, emoji: "☁️" },
+    { id: "sp-massage",      title: "Приватный массаж",          description: "Массаж без слов, только ощущения.",                   category: "PRIVATE", priceLc: 140, emoji: "🌙" },
+    { id: "sp-your-night",   title: "Ночь по твоим правилам",    description: "Вечер вдвоём по твоему сценарию.",                    category: "PRIVATE", priceLc: 280, emoji: "🔮" },
+    { id: "sp-dance",        title: "Приватный танец",           description: "Один медленный танец только для тебя.",               category: "PRIVATE", priceLc: 120, emoji: "🎭" },
+    { id: "sp-secret-date",  title: "Секретное свидание",        description: "Неожиданная встреча в неожиданном месте.",            category: "PRIVATE", priceLc: 220, emoji: "🗝️" },
+    { id: "sp-long-morning", title: "Долгое утро",               description: "Утро без планов, только вдвоём.",                     category: "PRIVATE", priceLc: 160, emoji: "☁️" },
   ] as const;
 
   for (const r of spicyRewards) {
     await prisma.rewardTemplate.upsert({
-      where: { id: `spicy-${r.title}` },
+      where: { id: r.id },
       update: {},
-      create: { id: `spicy-${r.title}`, isSystem: true, isSpicy: true, ...r } as any,
+      create: { isSystem: true, isSpicy: true, ...r } as any,
     });
   }
 
