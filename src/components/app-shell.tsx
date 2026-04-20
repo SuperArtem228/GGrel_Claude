@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-mobile flex-col bg-bg">
-      <div className={cn("relative flex flex-1 flex-col", className)}>{children}</div>
+    <div className="relative mx-auto flex h-[100dvh] w-full max-w-mobile flex-col overflow-hidden bg-bg">
+      <div className={cn("relative flex flex-1 flex-col overflow-hidden", className)}>{children}</div>
     </div>
   );
 }

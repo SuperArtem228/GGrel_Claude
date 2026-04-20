@@ -6,7 +6,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   await requirePair();
   return (
     <AppShell>
-      <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+      <div className="flex flex-1 flex-col overflow-hidden min-h-0">{children}</div>
       <BottomNav />
     </AppShell>
   );
