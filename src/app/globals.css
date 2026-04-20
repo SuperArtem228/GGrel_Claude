@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── BondGame design tokens ────────────────────────── */
+:root {
+  --bg: #F4F2EC;
+  --bg-deep: #EBE8E0;
+  --surface: #FFFFFF;
+  --surface-alt: #FAF8F3;
+  --ink: #0F0F0E;
+  --ink2: #2A2A27;
+  --muted: #7A776F;
+  --muted2: #A6A39A;
+  --hairline: rgba(15, 15, 14, 0.08);
+  --hairline-strong: rgba(15, 15, 14, 0.14);
+
+  /* Core accent = lime */
+  --accent: #D8FF3D;
+  --accent-soft: #F0FFB8;
+  --accent-wash: #F7FFD9;
+  --accent-ink: #1A1F00;
+
+  --success: #1F8A4C;
+  --warning: #B8760E;
+  --danger: #C53030;
+}
+
+[data-mode="spicy"] {
+  /* Spicy accent = magenta+violet, same surfaces */
+  --accent: #E5199F;
+  --accent-soft: #FFE0F2;
+  --accent-wash: #F7F0FF;
+  --accent-ink: #1C0338;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+body {
+  font-family: var(--font-geist), Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+/* ─── Utility classes ───────────────────────────────── */
+.card {
+  background: var(--surface);
+  border-radius: 22px;
+  box-shadow: 0 1px 2px rgba(15, 15, 14, 0.04), 0 8px 24px -12px rgba(15, 15, 14, 0.12);
+  border: 1px solid var(--hairline);
+}
+
+.card-soft {
+  background: var(--surface-alt);
+  border-radius: 22px;
+  border: 1px solid var(--hairline);
+}
+
+.hairline {
+  border-color: var(--hairline);
+}
+
+.hairline-t {
+  border-top: 1px solid var(--hairline);
+}
+
+.hairline-b {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.h-display {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+/* Soft dotted grid background for hero/empty surfaces */
+.dotty {
+  background-image: radial-gradient(rgba(15, 15, 14, 0.06) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* Lime blur blob */
+.lime-blob {
+  background: var(--accent);
+  filter: blur(40px);
+  opacity: 0.55;
+  pointer-events: none;
+  border-radius: 9999px;
+}
+
+/* PWA safe-area friendly */
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Scrollbar — hidden on mobile layouts */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Shimmer for skeletons */
+.skel {
+  background: linear-gradient(
+      90deg,
+      rgba(15, 15, 14, 0.06) 0%,
+      rgba(15, 15, 14, 0.1) 50%,
+      rgba(15, 15, 14, 0.06) 100%
+    )
+    0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 12px;
+}

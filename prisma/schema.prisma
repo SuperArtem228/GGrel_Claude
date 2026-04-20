@@ -1,0 +1,487 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────
+
+enum PairStatus {
+  PENDING
+  ACTIVE
+  ARCHIVED
+}
+
+enum PairRole {
+  A
+  B
+}
+
+enum TaskStatus {
+  DRAFT
+  PROPOSED
+  BARGAINING
+  ACCEPTED
+  IN_PROGRESS
+  PENDING_CONFIRM
+  DISPUTED
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+enum TaskCategory {
+  HOME
+  CARE
+  FOOD
+  TIME
+  SURPRISE
+  OTHER
+  SPICY
+}
+
+enum ChallengeKind {
+  SOLO
+  COUPLE
+  ASYNC
+}
+
+enum ChallengePeriod {
+  DAILY
+  WEEKLY
+}
+
+enum ChallengeStatus {
+  OFFERED
+  SELECTED
+  IN_PROGRESS
+  DONE
+  CLAIMED
+  EXPIRED
+}
+
+enum RewardCategory {
+  ACTION
+  INSTANT
+  PRIVATE
+}
+
+enum RewardStatus {
+  PURCHASED
+  OWNED
+  ACTIVATED
+  FULFILLED
+  ARCHIVED
+}
+
+enum SourceType {
+  STORE
+  CASE
+  GIFT
+  SYSTEM
+}
+
+enum WalletType {
+  PERSONAL
+  COMMON
+}
+
+enum TxReason {
+  TASK_RESERVE
+  TASK_RELEASE
+  TASK_PAYOUT
+  TASK_BONUS
+  CHALLENGE_REWARD
+  STREAK_BONUS
+  CASE_OPEN
+  REWARD_PURCHASE
+  SEED
+  ADJUSTMENT
+}
+
+enum NotificationKind {
+  TASK_SENT
+  TASK_REPLY
+  TASK_CONFIRMED
+  STREAK_RISK
+  REWARD_ACTIVATED
+  CASE_RESULT
+  SPICY_NEUTRAL
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+// ─── Auth ───────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions           Session[]
+  pairMemberships    PairMember[]
+  createdTasks       Task[]             @relation("CreatedTasks")
+  assignedTasks      Task[]             @relation("AssignedTasks")
+  bargainRounds      TaskBargainRound[]
+  createdRewards     RewardTemplate[]   @relation("CreatedRewards")
+  ownedRewards       OwnedReward[]      @relation("OwnedBy")
+  purchasedRewards   OwnedReward[]      @relation("PurchasedBy")
+  createdCases       CaseTemplate[]     @relation("CreatedCases")
+  caseOpens          CaseOpen[]
+  walletTransactions WalletTransaction[]
+  pushSubscriptions  PushSubscription[]
+  notificationLogs   NotificationLog[]
+  spicyConsents      SpicyConsent[]
+  pairsCreated       Pair[]             @relation("PairCreator")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  userAgent String?
+  ipHash    String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── Pairs ──────────────────────────────────────────────
+
+model Pair {
+  id                  String     @id @default(cuid())
+  name                String
+  createdById         String
+  status              PairStatus @default(PENDING)
+  timezone            String     @default("Europe/Moscow")
+  commonWalletBalance Int        @default(0)
+  coupleStreak        Int        @default(0)
+  lastStreakDate      DateTime?
+  graceTokens         Int        @default(1)
+  spicyEnabled        Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  createdBy         User                @relation("PairCreator", fields: [createdById], references: [id])
+  members           PairMember[]
+  invites           PairInvite[]
+  tasks             Task[]
+  pairChallenges    PairChallenge[]
+  ownedRewards      OwnedReward[]
+  caseTemplates     CaseTemplate[]
+  caseOpens         CaseOpen[]
+  walletTxs         WalletTransaction[]
+  notificationLogs  NotificationLog[]
+  spicyConsents     SpicyConsent[]
+}
+
+model PairMember {
+  pairId                String
+  userId                String
+  role                  PairRole
+  personalWalletBalance Int      @default(0)
+  personalStreak        Int      @default(0)
+  spicyOptIn            Boolean  @default(false)
+  joinedAt              DateTime @default(now())
+
+  pair Pair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([pairId, userId])
+  @@unique([pairId, role])
+  @@index([userId])
+}
+
+model PairInvite {
+  id         String    @id @default(cuid())
+  pairId     String
+  code       String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  pair Pair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+
+  @@index([pairId])
+}
+
+// ─── Tasks ──────────────────────────────────────────────
+
+model Task {
+  id                String       @id @default(cuid())
+  pairId            String
+  createdByUserId   String
+  assignedToUserId  String
+  title             String
+  description       String?
+  category          TaskCategory @default(OTHER)
+  priceLc           Int
+  bonusSpeedLc      Int          @default(0)
+  bonusQualityLc    Int          @default(0)
+  deadlineAt        DateTime?
+  urgent            Boolean      @default(false)
+  bargainAllowed    Boolean      @default(true)
+  onExchange        Boolean      @default(false)
+  isSpicy           Boolean      @default(false)
+  status            TaskStatus   @default(DRAFT)
+  frozenAmountLc    Int          @default(0)
+  acceptedAt        DateTime?
+  completedAt       DateTime?
+  confirmedAt       DateTime?
+  expiredAt         DateTime?
+  disputeReason     String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  pair           Pair               @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  createdBy      User               @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  assignedTo     User               @relation("AssignedTasks", fields: [assignedToUserId], references: [id])
+  bargainRounds  TaskBargainRound[]
+
+  @@index([pairId, status])
+  @@index([assignedToUserId])
+}
+
+model TaskBargainRound {
+  id               String   @id @default(cuid())
+  taskId           String
+  actorUserId      String
+  offeredPriceLc   Int
+  offeredDeadlineAt DateTime?
+  message          String?
+  createdAt        DateTime @default(now())
+
+  task  Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorUserId], references: [id])
+
+  @@index([taskId])
+}
+
+// ─── Challenges ─────────────────────────────────────────
+
+model ChallengeTemplate {
+  id           String          @id @default(cuid())
+  kind         ChallengeKind
+  period       ChallengePeriod
+  title        String
+  description  String
+  category     String
+  difficulty   Int             @default(1)
+  rewardLc     Int
+  requiresBoth Boolean         @default(false)
+  totalSteps   Int             @default(1)
+  packKey      String?
+  isSpicy      Boolean         @default(false)
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+
+  pairChallenges PairChallenge[]
+
+  @@index([period, isSpicy, active])
+}
+
+model PairChallenge {
+  id             String          @id @default(cuid())
+  pairId         String
+  templateId     String
+  periodKey      String
+  status         ChallengeStatus @default(OFFERED)
+  progressUserA  Int             @default(0)
+  progressUserB  Int             @default(0)
+  rewardClaimed  Boolean         @default(false)
+  startedAt      DateTime?
+  expiresAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  pair     Pair              @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  template ChallengeTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([pairId, templateId, periodKey])
+  @@index([pairId, status])
+}
+
+// ─── Rewards ────────────────────────────────────────────
+
+model RewardTemplate {
+  id              String         @id @default(cuid())
+  createdByUserId String?
+  pairId          String?
+  title           String
+  description     String?
+  category        RewardCategory @default(ACTION)
+  priceLc         Int
+  isSpicy         Boolean        @default(false)
+  isSystem        Boolean        @default(false)
+  active          Boolean        @default(true)
+  emoji           String?
+  createdAt       DateTime       @default(now())
+
+  createdBy User?          @relation("CreatedRewards", fields: [createdByUserId], references: [id])
+  owned     OwnedReward[]
+  caseItems CaseItem[]
+  caseOpens CaseOpen[]
+
+  @@index([isSpicy, active])
+}
+
+model OwnedReward {
+  id                  String       @id @default(cuid())
+  pairId              String
+  rewardTemplateId    String
+  ownerUserId         String
+  purchasedByUserId   String
+  status              RewardStatus @default(OWNED)
+  sourceType          SourceType   @default(STORE)
+  sourceId            String?
+  activatedAt         DateTime?
+  fulfilledAt         DateTime?
+  privateFlag         Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+
+  pair           Pair           @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  rewardTemplate RewardTemplate @relation(fields: [rewardTemplateId], references: [id])
+  owner          User           @relation("OwnedBy", fields: [ownerUserId], references: [id])
+  purchasedBy    User           @relation("PurchasedBy", fields: [purchasedByUserId], references: [id])
+
+  @@index([pairId, status])
+  @@index([ownerUserId])
+}
+
+// ─── Cases ──────────────────────────────────────────────
+
+model CaseTemplate {
+  id              String   @id @default(cuid())
+  createdByUserId String?
+  pairId          String?
+  title           String
+  description     String?
+  openPriceLc     Int
+  isSpicy         Boolean  @default(false)
+  isSystem        Boolean  @default(false)
+  active          Boolean  @default(true)
+  emoji           String?
+  accent          String?
+  createdAt       DateTime @default(now())
+
+  createdBy User?      @relation("CreatedCases", fields: [createdByUserId], references: [id])
+  pair      Pair?      @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  items     CaseItem[]
+  opens     CaseOpen[]
+
+  @@index([isSpicy, active])
+}
+
+model CaseItem {
+  id                 String @id @default(cuid())
+  caseTemplateId     String
+  rewardTemplateId   String
+  probabilityPercent Int
+  sortOrder          Int    @default(0)
+
+  caseTemplate   CaseTemplate   @relation(fields: [caseTemplateId], references: [id], onDelete: Cascade)
+  rewardTemplate RewardTemplate @relation(fields: [rewardTemplateId], references: [id])
+
+  @@index([caseTemplateId])
+}
+
+model CaseOpen {
+  id                       String   @id @default(cuid())
+  caseTemplateId           String
+  pairId                   String
+  openedByUserId           String
+  receivedRewardTemplateId String
+  openPriceLc              Int
+  resultProbabilityPercent Int
+  createdAt                DateTime @default(now())
+
+  caseTemplate   CaseTemplate   @relation(fields: [caseTemplateId], references: [id])
+  pair           Pair           @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  openedBy       User           @relation(fields: [openedByUserId], references: [id])
+  receivedReward RewardTemplate @relation(fields: [receivedRewardTemplateId], references: [id])
+
+  @@index([pairId])
+}
+
+// ─── Wallet & Notifications ────────────────────────────
+
+model WalletTransaction {
+  id          String     @id @default(cuid())
+  pairId      String
+  userId      String?
+  walletType  WalletType
+  amountLc    Int
+  reason      TxReason
+  relatedType String?
+  relatedId   String?
+  note        String?
+  createdAt   DateTime   @default(now())
+
+  pair Pair  @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([pairId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationLog {
+  id          String             @id @default(cuid())
+  userId      String
+  pairId      String?
+  kind        NotificationKind
+  title       String
+  body        String
+  payloadJson String?
+  status      NotificationStatus @default(QUEUED)
+  sentAt      DateTime?
+  createdAt   DateTime           @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pair Pair? @relation(fields: [pairId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model SpicyConsent {
+  pairId    String
+  userId    String
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pair Pair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([pairId, userId])
+}
