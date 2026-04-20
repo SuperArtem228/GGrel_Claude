@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
 import { sweepExpired } from "@/actions/tasks";
 import { dailyPeriodKey, weeklyPeriodKey } from "@/lib/utils";
+import { PushBanner } from "@/components/push-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,7 @@ export default async function HomePage() {
         }
       />
       <MobileScroll>
+        <PushBanner />
         <WalletCard
           personalLc={me.personalWalletBalance}
           commonLc={pair.commonWalletBalance}
